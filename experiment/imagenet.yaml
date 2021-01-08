@@ -1,3 +1,5 @@
+# @package _global_
+
 data:
   type: image
   train_dir: data/Imagenet

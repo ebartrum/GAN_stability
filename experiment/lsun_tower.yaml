@@ -1,9 +1,11 @@
+# @package _global_
+
 data:
   type: lsun
   train_dir: data/LSUN
   test_dir: data/LSUN
-  lsun_categories_train: [bedroom_train]
-  lsun_categories_test: [bedroom_test]
+  lsun_categories_train: [tower_train]
+  lsun_categories_test: [tower_test]
   img_size: 256
 generator:
   name: resnet
@@ -21,7 +23,7 @@ z_dist:
   type: gauss
   dim: 256
 training:
-  out_dir: output/lsun_bedroom
+  out_dir: output/lsun_tower
 test:
   batch_size: 32
   sample_size: 64

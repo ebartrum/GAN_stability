@@ -1,3 +1,4 @@
+no_cuda: false
 data:
   type: lsun
   train_dir: data/LSUN
