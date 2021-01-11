@@ -55,10 +55,10 @@ def update_recursive(dict1, dict2):
             dict1[k] = v
 
 def build_optimizers(generator, discriminator, config):
-    optimizer = config['training']['optimizer']
-    lr_g = config['training']['lr_g']
-    lr_d = config['training']['lr_d']
-    equalize_lr = config['training']['equalize_lr']
+    optimizer = config['train']['optimizer']
+    lr_g = config['train']['lr_g']
+    lr_d = config['train']['lr_d']
+    equalize_lr = config['train']['equalize_lr']
 
     toggle_grad(generator, True)
     toggle_grad(discriminator, True)
@@ -94,8 +94,8 @@ def build_optimizers(generator, discriminator, config):
 def build_lr_scheduler(optimizer, config, last_epoch=-1):
     lr_scheduler = optim.lr_scheduler.StepLR(
         optimizer,
-        step_size=config['training']['lr_anneal_every'],
-        gamma=config['training']['lr_anneal'],
+        step_size=config['train']['lr_anneal_every'],
+        gamma=config['train']['lr_anneal'],
         last_epoch=last_epoch
     )
     return lr_scheduler

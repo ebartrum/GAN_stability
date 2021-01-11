@@ -18,7 +18,7 @@ discriminator:
 z_dist:
   type: gauss
   dim: 256
-training:
+train:
   out_dir: output/celebA-sample
   batch_size: 8
 test:

@@ -14,7 +14,7 @@ from gan_training.inputs import get_dataset
 from gan_training.distributions import get_ydist, get_zdist
 from gan_training.eval import Evaluator
 from gan_training.config import (
-    load_config, build_models, build_optimizers, build_lr_scheduler,
+    load_config, build_optimizers, build_lr_scheduler,
 )
 from omegaconf import DictConfig
 from hydra.utils import instantiate
@@ -24,15 +24,15 @@ def main(config: DictConfig) -> None:
     is_cuda = (torch.cuda.is_available() and not config.no_cuda)
 
     # Short hands
-    batch_size = config['training']['batch_size']
-    d_steps = config['training']['d_steps']
-    restart_every = config['training']['restart_every']
-    inception_every = config['training']['inception_every']
-    save_every = config['training']['save_every']
-    backup_every = config['training']['backup_every']
-    sample_nlabels = config['training']['sample_nlabels']
+    batch_size = config['train']['batch_size']
+    d_steps = config['train']['d_steps']
+    restart_every = config['train']['restart_every']
+    inception_every = config['train']['inception_every']
+    save_every = config['train']['save_every']
+    backup_every = config['train']['backup_every']
+    sample_nlabels = config['train']['sample_nlabels']
 
-    out_dir = config['training']['out_dir']
+    out_dir = config['train']['out_dir']
     checkpoint_dir = path.join(out_dir, 'chkpts')
 
     # Create missing directories
@@ -58,7 +58,7 @@ def main(config: DictConfig) -> None:
     train_loader = torch.utils.data.DataLoader(
             train_dataset,
             batch_size=batch_size,
-            num_workers=config['training']['nworkers'],
+            num_workers=config['train']['nworkers'],
             shuffle=True, pin_memory=True, sampler=None, drop_last=True
     )
 
@@ -93,13 +93,13 @@ def main(config: DictConfig) -> None:
     )
 
     # Get model file
-    model_file = config['training']['model_file']
+    model_file = config['train']['model_file']
 
     # Logger
     logger = Logger(
         log_dir=path.join(out_dir, 'logs'),
         img_dir=path.join(out_dir, 'imgs'),
-        monitoring=config['training']['monitoring'],
+        monitoring=config['train']['monitoring'],
         monitoring_dir=path.join(out_dir, 'monitoring')
     )
 
@@ -116,7 +116,7 @@ def main(config: DictConfig) -> None:
     utils.save_images(x_real, path.join(out_dir, 'real.png'))
 
     # Test generator
-    if config['training']['take_model_average']:
+    if config['train']['take_model_average']:
         generator_test = copy.deepcopy(generator)
         checkpoint_io.register_modules(generator_test=generator_test)
     else:
@@ -140,8 +140,8 @@ def main(config: DictConfig) -> None:
         logger.load_stats('stats.p')
 
     # Reinitialize model average if needed
-    if (config['training']['take_model_average']
-            and config['training']['model_average_reinit']):
+    if (config['train']['take_model_average']
+            and config['train']['model_average_reinit']):
         update_average(generator_test, generator, 0.)
 
     # Learning rate anneling
@@ -151,9 +151,9 @@ def main(config: DictConfig) -> None:
     # Trainer
     trainer = Trainer(
         generator, discriminator, g_optimizer, d_optimizer,
-        gan_type=config['training']['gan_type'],
-        reg_type=config['training']['reg_type'],
-        reg_param=config['training']['reg_param']
+        gan_type=config['train']['gan_type'],
+        reg_type=config['train']['reg_type'],
+        reg_param=config['train']['reg_param']
     )
 
     # Training loop
@@ -187,9 +187,9 @@ def main(config: DictConfig) -> None:
                 gloss = trainer.generator_trainstep(y, z)
                 logger.add('losses', 'generator', gloss, it=it)
 
-                if config['training']['take_model_average']:
+                if config['train']['take_model_average']:
                     update_average(generator_test, generator,
-                                   beta=config['training']['model_average_beta'])
+                                   beta=config['train']['model_average_beta'])
 
             # Print stats
             g_loss_last = logger.get_last('losses', 'generator')
@@ -199,7 +199,7 @@ def main(config: DictConfig) -> None:
                   % (epoch_idx, it, g_loss_last, d_loss_last, d_reg_last))
 
             # (i) Sample if necessary
-            if (it % config['training']['sample_every']) == 0:
+            if (it % config['train']['sample_every']) == 0:
                 print('Creating samples...')
                 x = evaluator.create_samples(ztest, ytest)
                 logger.add_imgs(x, 'all', it)
