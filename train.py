@@ -14,7 +14,7 @@ from gan_training.inputs import get_dataset
 from gan_training.distributions import get_ydist, get_zdist
 from gan_training.eval import Evaluator
 from gan_training.config import (
-    load_config, build_optimizers, build_lr_scheduler,
+    build_optimizers, build_lr_scheduler,
 )
 from omegaconf import DictConfig
 from hydra.utils import instantiate
