@@ -39,25 +39,25 @@ def main(cfg: DictConfig) -> None:
 
     # Dataset
     train_dataset, nlabels = get_dataset(
-        name=cfg['data']['type'],
-        data_dir=cfg['data']['train_dir'],
-        size=cfg['data']['img_size'],
-        lsun_categories=cfg['data']['lsun_categories_train']
+        name=cfg.data.type,
+        data_dir=cfg.data.train_dir,
+        size=cfg.data.img_size,
+        lsun_categories=cfg.data.lsun_categories_train
     )
     train_loader = torch.utils.data.DataLoader(
             train_dataset,
             batch_size=cfg.train.batch_size,
-            num_workers=cfg['train']['nworkers'],
+            num_workers=cfg.train.nworkers,
             shuffle=True, pin_memory=True, sampler=None, drop_last=True
     )
 
     # Number of labels
-    nlabels = min(nlabels, cfg['data']['nlabels'])
+    nlabels = min(nlabels, cfg.data.nlabels)
     sample_nlabels = min(nlabels, cfg.train.sample_nlabels)
 
     # Create models
-    generator = instantiate(cfg['generator'])
-    discriminator = instantiate(cfg['discriminator'])
+    generator = instantiate(cfg.generator)
+    discriminator = instantiate(cfg.discriminator)
     print(generator)
     print(discriminator)
 
@@ -82,19 +82,19 @@ def main(cfg: DictConfig) -> None:
     )
 
     # Get model file
-    model_file = cfg['train']['model_file']
+    model_file = cfg.train.model_file
 
     # Logger
     logger = Logger(
         log_dir=path.join(cfg.train.out_dir, 'logs'),
         img_dir=path.join(cfg.train.out_dir, 'imgs'),
-        monitoring=cfg['train']['monitoring'],
+        monitoring=cfg.train.monitoring,
         monitoring_dir=path.join(cfg.train.out_dir, 'monitoring')
     )
 
     # Distributions
     ydist = get_ydist(nlabels, device=device)
-    zdist = get_zdist(cfg['z_dist']['type'], cfg['z_dist']['dim'],
+    zdist = get_zdist(cfg.z_dist.type, cfg.z_dist.dim,
                       device=device)
 
     # Save for tests
@@ -105,7 +105,7 @@ def main(cfg: DictConfig) -> None:
     utils.save_images(x_real, path.join(cfg.train.out_dir, 'real.png'))
 
     # Test generator
-    if cfg['train']['take_model_average']:
+    if cfg.train.take_model_average:
         generator_test = copy.deepcopy(generator)
         checkpoint_io.register_modules(generator_test=generator_test)
     else:
@@ -129,8 +129,8 @@ def main(cfg: DictConfig) -> None:
         logger.load_stats('stats.p')
 
     # Reinitialize model average if needed
-    if (cfg['train']['take_model_average']
-            and cfg['train']['model_average_reinit']):
+    if (cfg.train.take_model_average
+            and cfg.train.model_average_reinit):
         update_average(generator_test, generator, 0.)
 
     # Learning rate anneling
@@ -140,9 +140,9 @@ def main(cfg: DictConfig) -> None:
     # Trainer
     trainer = Trainer(
         generator, discriminator, g_optimizer, d_optimizer,
-        gan_type=cfg['train']['gan_type'],
-        reg_type=cfg['train']['reg_type'],
-        reg_param=cfg['train']['reg_param']
+        gan_type=cfg.train.gan_type,
+        reg_type=cfg.train.reg_type,
+        reg_param=cfg.train.reg_param
     )
 
     # Training loop
@@ -176,9 +176,9 @@ def main(cfg: DictConfig) -> None:
                 gloss = trainer.generator_trainstep(y, z)
                 logger.add('losses', 'generator', gloss, it=it)
 
-                if cfg['train']['take_model_average']:
+                if cfg.train.take_model_average:
                     update_average(generator_test, generator,
-                                   beta=cfg['train']['model_average_beta'])
+                                   beta=cfg.train.model_average_beta)
 
             # Print stats
             g_loss_last = logger.get_last('losses', 'generator')
@@ -188,7 +188,7 @@ def main(cfg: DictConfig) -> None:
                   % (epoch_idx, it, g_loss_last, d_loss_last, d_reg_last))
 
             # (i) Sample if necessary
-            if (it % cfg['train']['sample_every']) == 0:
+            if (it % cfg.train.sample_every) == 0:
                 print('Creating samples...')
                 x = evaluator.create_samples(ztest, ytest)
                 logger.add_imgs(x, 'all', it)
