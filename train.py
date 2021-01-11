@@ -20,24 +20,13 @@ from omegaconf import DictConfig
 from hydra.utils import instantiate
 
 @hydra.main(config_name="config")
-def main(config: DictConfig) -> None:
-    is_cuda = (torch.cuda.is_available() and not config.no_cuda)
-
-    # Short hands
-    batch_size = config['train']['batch_size']
-    d_steps = config['train']['d_steps']
-    restart_every = config['train']['restart_every']
-    inception_every = config['train']['inception_every']
-    save_every = config['train']['save_every']
-    backup_every = config['train']['backup_every']
-    sample_nlabels = config['train']['sample_nlabels']
-
-    out_dir = config['train']['out_dir']
-    checkpoint_dir = path.join(out_dir, 'chkpts')
+def main(cfg: DictConfig) -> None:
+    is_cuda = (torch.cuda.is_available() and not cfg.no_cuda)
+    checkpoint_dir = path.join(cfg.train.out_dir, 'chkpts')
 
     # Create missing directories
-    if not path.exists(out_dir):
-        os.makedirs(out_dir)
+    if not path.exists(cfg.train.out_dir):
+        os.makedirs(cfg.train.out_dir)
     if not path.exists(checkpoint_dir):
         os.makedirs(checkpoint_dir)
 
@@ -50,25 +39,25 @@ def main(config: DictConfig) -> None:
 
     # Dataset
     train_dataset, nlabels = get_dataset(
-        name=config['data']['type'],
-        data_dir=config['data']['train_dir'],
-        size=config['data']['img_size'],
-        lsun_categories=config['data']['lsun_categories_train']
+        name=cfg['data']['type'],
+        data_dir=cfg['data']['train_dir'],
+        size=cfg['data']['img_size'],
+        lsun_categories=cfg['data']['lsun_categories_train']
     )
     train_loader = torch.utils.data.DataLoader(
             train_dataset,
-            batch_size=batch_size,
-            num_workers=config['train']['nworkers'],
+            batch_size=cfg.train.batch_size,
+            num_workers=cfg['train']['nworkers'],
             shuffle=True, pin_memory=True, sampler=None, drop_last=True
     )
 
     # Number of labels
-    nlabels = min(nlabels, config['data']['nlabels'])
-    sample_nlabels = min(nlabels, sample_nlabels)
+    nlabels = min(nlabels, cfg['data']['nlabels'])
+    sample_nlabels = min(nlabels, cfg.train.sample_nlabels)
 
     # Create models
-    generator = instantiate(config['generator'])
-    discriminator = instantiate(config['discriminator'])
+    generator = instantiate(cfg['generator'])
+    discriminator = instantiate(cfg['discriminator'])
     print(generator)
     print(discriminator)
 
@@ -77,7 +66,7 @@ def main(config: DictConfig) -> None:
     discriminator = discriminator.to(device)
 
     g_optimizer, d_optimizer = build_optimizers(
-        generator, discriminator, config
+        generator, discriminator, cfg
     )
 
     # Use multiple GPUs if possible
@@ -93,30 +82,30 @@ def main(config: DictConfig) -> None:
     )
 
     # Get model file
-    model_file = config['train']['model_file']
+    model_file = cfg['train']['model_file']
 
     # Logger
     logger = Logger(
-        log_dir=path.join(out_dir, 'logs'),
-        img_dir=path.join(out_dir, 'imgs'),
-        monitoring=config['train']['monitoring'],
-        monitoring_dir=path.join(out_dir, 'monitoring')
+        log_dir=path.join(cfg.train.out_dir, 'logs'),
+        img_dir=path.join(cfg.train.out_dir, 'imgs'),
+        monitoring=cfg['train']['monitoring'],
+        monitoring_dir=path.join(cfg.train.out_dir, 'monitoring')
     )
 
     # Distributions
     ydist = get_ydist(nlabels, device=device)
-    zdist = get_zdist(config['z_dist']['type'], config['z_dist']['dim'],
+    zdist = get_zdist(cfg['z_dist']['type'], cfg['z_dist']['dim'],
                       device=device)
 
     # Save for tests
-    ntest = batch_size
+    ntest = cfg.train.batch_size
     x_real, ytest = utils.get_nsamples(train_loader, ntest)
     ytest.clamp_(None, nlabels-1)
     ztest = zdist.sample((ntest,))
-    utils.save_images(x_real, path.join(out_dir, 'real.png'))
+    utils.save_images(x_real, path.join(cfg.train.out_dir, 'real.png'))
 
     # Test generator
-    if config['train']['take_model_average']:
+    if cfg['train']['take_model_average']:
         generator_test = copy.deepcopy(generator)
         checkpoint_io.register_modules(generator_test=generator_test)
     else:
@@ -124,7 +113,7 @@ def main(config: DictConfig) -> None:
 
     # Evaluator
     evaluator = Evaluator(generator_test, zdist, ydist,
-                          batch_size=batch_size, device=device)
+                          batch_size=cfg.train.batch_size, device=device)
 
     # Train
     tstart = t0 = time.time()
@@ -140,20 +129,20 @@ def main(config: DictConfig) -> None:
         logger.load_stats('stats.p')
 
     # Reinitialize model average if needed
-    if (config['train']['take_model_average']
-            and config['train']['model_average_reinit']):
+    if (cfg['train']['take_model_average']
+            and cfg['train']['model_average_reinit']):
         update_average(generator_test, generator, 0.)
 
     # Learning rate anneling
-    g_scheduler = build_lr_scheduler(g_optimizer, config, last_epoch=it)
-    d_scheduler = build_lr_scheduler(d_optimizer, config, last_epoch=it)
+    g_scheduler = build_lr_scheduler(g_optimizer, cfg, last_epoch=it)
+    d_scheduler = build_lr_scheduler(d_optimizer, cfg, last_epoch=it)
 
     # Trainer
     trainer = Trainer(
         generator, discriminator, g_optimizer, d_optimizer,
-        gan_type=config['train']['gan_type'],
-        reg_type=config['train']['reg_type'],
-        reg_param=config['train']['reg_param']
+        gan_type=cfg['train']['gan_type'],
+        reg_type=cfg['train']['reg_type'],
+        reg_param=cfg['train']['reg_param']
     )
 
     # Training loop
@@ -176,20 +165,20 @@ def main(config: DictConfig) -> None:
             y.clamp_(None, nlabels-1)
 
             # Discriminator updates
-            z = zdist.sample((batch_size,))
+            z = zdist.sample((cfg.train.batch_size,))
             dloss, reg = trainer.discriminator_trainstep(x_real, y, z)
             logger.add('losses', 'discriminator', dloss, it=it)
             logger.add('losses', 'regularizer', reg, it=it)
 
             # Generators updates
-            if ((it + 1) % d_steps) == 0:
-                z = zdist.sample((batch_size,))
+            if ((it + 1) % cfg.train.d_steps) == 0:
+                z = zdist.sample((cfg.train.batch_size,))
                 gloss = trainer.generator_trainstep(y, z)
                 logger.add('losses', 'generator', gloss, it=it)
 
-                if config['train']['take_model_average']:
+                if cfg['train']['take_model_average']:
                     update_average(generator_test, generator,
-                                   beta=config['train']['model_average_beta'])
+                                   beta=cfg['train']['model_average_beta'])
 
             # Print stats
             g_loss_last = logger.get_last('losses', 'generator')
@@ -199,7 +188,7 @@ def main(config: DictConfig) -> None:
                   % (epoch_idx, it, g_loss_last, d_loss_last, d_reg_last))
 
             # (i) Sample if necessary
-            if (it % config['train']['sample_every']) == 0:
+            if (it % cfg['train']['sample_every']) == 0:
                 print('Creating samples...')
                 x = evaluator.create_samples(ztest, ytest)
                 logger.add_imgs(x, 'all', it)
@@ -208,19 +197,19 @@ def main(config: DictConfig) -> None:
                     logger.add_imgs(x, '%04d' % y_inst, it)
 
             # (ii) Compute inception if necessary
-            if inception_every > 0 and ((it + 1) % inception_every) == 0:
+            if cfg.train.inception_every > 0 and ((it + 1) % cfg.train.inception_every) == 0:
                 inception_mean, inception_std = evaluator.compute_inception_score()
                 logger.add('inception_score', 'mean', inception_mean, it=it)
                 logger.add('inception_score', 'stddev', inception_std, it=it)
 
             # (iii) Backup if necessary
-            if ((it + 1) % backup_every) == 0:
+            if ((it + 1) % cfg.train.backup_every) == 0:
                 print('Saving backup...')
                 checkpoint_io.save('model_%08d.pt' % it, it=it)
                 logger.save_stats('stats_%08d.p' % it)
 
             # (iv) Save checkpoint if necessary
-            if time.time() - t0 > save_every:
+            if time.time() - t0 > cfg.train.save_every:
                 print('Saving checkpoint...')
                 checkpoint_io.save(model_file, it=it)
                 logger.save_stats('stats.p')
