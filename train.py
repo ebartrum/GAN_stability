@@ -17,6 +17,7 @@ from gan_training.config import (
     load_config, build_models, build_optimizers, build_lr_scheduler,
 )
 from omegaconf import DictConfig
+from hydra.utils import instantiate
 
 @hydra.main(config_name="config")
 def main(config: DictConfig) -> None:
@@ -47,7 +48,6 @@ def main(config: DictConfig) -> None:
 
     device = torch.device("cuda:0" if is_cuda else "cpu")
 
-
     # Dataset
     train_dataset, nlabels = get_dataset(
         name=config['data']['type'],
@@ -67,7 +67,8 @@ def main(config: DictConfig) -> None:
     sample_nlabels = min(nlabels, sample_nlabels)
 
     # Create models
-    generator, discriminator = build_models(config)
+    generator = instantiate(config['generator'])
+    discriminator = instantiate(config['discriminator'])
     print(generator)
     print(discriminator)
 

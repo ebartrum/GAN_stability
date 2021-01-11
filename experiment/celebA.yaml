@@ -6,17 +6,15 @@ data:
   test_dir: ~/datasets/img_align_celeba
   img_size: 128
 generator:
-  name: resnet
-  kwargs:
-    nfilter: 16
-    nfilter_max: 512
-    embed_size: 1
+  _target_: gan_training.models.resnet.Generator
+  nfilter: 16
+  nfilter_max: 512
+  embed_size: 1
 discriminator:
-  name: resnet
-  kwargs:
-    nfilter: 16
-    nfilter_max: 512
-    embed_size: 1
+  _target_: gan_training.models.resnet.Discriminator
+  nfilter: 16
+  nfilter_max: 512
+  embed_size: 1
 z_dist:
   type: gauss
   dim: 256

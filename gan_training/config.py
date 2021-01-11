@@ -3,7 +3,7 @@ from torch import optim
 from os import path
 from gan_training.models import generator_dict, discriminator_dict
 from gan_training.train import toggle_grad
-
+from hydra.utils import instantiate
 
 # General config
 def load_config(path, default_path):
@@ -53,29 +53,6 @@ def update_recursive(dict1, dict2):
             update_recursive(dict1[k], v)
         else:
             dict1[k] = v
-
-
-def build_models(config):
-    # Get classes
-    Generator = generator_dict[config['generator']['name']]
-    Discriminator = discriminator_dict[config['discriminator']['name']]
-
-    # Build models
-    generator = Generator(
-        z_dim=config['z_dist']['dim'],
-        nlabels=config['data']['nlabels'],
-        size=config['data']['img_size'],
-        **config['generator']['kwargs']
-    )
-    discriminator = Discriminator(
-        config['discriminator']['name'],
-        nlabels=config['data']['nlabels'],
-        size=config['data']['img_size'],
-        **config['discriminator']['kwargs']
-    )
-
-    return generator, discriminator
-
 
 def build_optimizers(generator, discriminator, config):
     optimizer = config['training']['optimizer']

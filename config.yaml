@@ -8,11 +8,15 @@ data:
   img_size: 256
   nlabels: 1
 generator:
-  name: resnet
-  kwargs:
+  _target_: MISSING
+  z_dim: "${z_dist.dim}"
+  nlabels: "${data.nlabels}" 
+  size: "${data.img_size}" 
 discriminator:
-  name: resnet
-  kwargs:
+  _target_: MISSING
+  z_dim: "${z_dist.dim}"
+  nlabels: "${data.nlabels}" 
+  size: "${data.img_size}" 
 z_dist:
   type: gauss
   dim: 256
