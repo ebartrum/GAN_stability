@@ -20,6 +20,7 @@ import pytorch_lightning as pl
 from torch import optim
 from torch.nn import functional as F
 from collections import OrderedDict
+from gan_training.metrics import inception_score
 
 class LM(pl.LightningModule):
     def __init__(self, cfg):
@@ -79,10 +80,10 @@ class LM(pl.LightningModule):
         self.zdist = get_zdist(cfg.z_dist.type, cfg.z_dist.dim)
 
         # Save for tests
-        # ntest = cfg.train.batch_size
-        # x_real, ytest = utils.get_nsamples(self.train_dataloader, ntest)
-        # ytest.clamp_(None, nlabels-1)
-        # ztest = zdist.sample((ntest,))
+        ntest = cfg.train.batch_size
+        x_real, self.ytest = utils.get_nsamples(self.train_dataloader(), ntest)
+        self.ytest.clamp_(None, self.nlabels-1)
+        self.ztest = self.zdist.sample((ntest,))
         # utils.save_images(x_real, path.join(cfg.train.out_dir, 'real.png'))
 
         # Test generator
@@ -93,11 +94,8 @@ class LM(pl.LightningModule):
         #     generator_test = generator
 
         # Evaluator
-        # self.evaluator = Evaluator(self.generator, self.zdist, self.ydist,
-        #                       batch_size=cfg.train.batch_size)
-
-        # Train
-        # tstart = t0 = time.time()
+        self.evaluator = Evaluator(self.generator, self.zdist, self.ydist,
+                              batch_size=cfg.train.batch_size)
 
         # Load checkpoint if it exists
         # try:
@@ -113,15 +111,6 @@ class LM(pl.LightningModule):
         # if (cfg.train.take_model_average
         #         and cfg.train.model_average_reinit):
         #     update_average(generator_test, generator, 0.)
-
-
-        # Trainer
-        # trainer = Trainer(
-        #     self.generator, self.discriminator, g_optimizer, d_optimizer,
-        #     gan_type=cfg.train.gan_type,
-        #     reg_type=cfg.train.reg_type,
-        #     reg_param=cfg.train.reg_param
-        # )
 
     def train_dataloader(self):
         return torch.utils.data.DataLoader(
@@ -140,9 +129,6 @@ class LM(pl.LightningModule):
         lr_g = self.cfg.train.lr_g
         lr_d = self.cfg.train.lr_d
         equalize_lr = self.cfg.train.equalize_lr
-
-        # toggle_grad(self.generator, True)
-        # toggle_grad(self.discriminator, True)
 
         if equalize_lr:
             g_gradient_scales = getattr(self.generator, 'gradient_scales', dict())
@@ -185,44 +171,45 @@ class LM(pl.LightningModule):
        )
 
     def on_epoch_end(self):
-        import ipdb;ipdb.set_trace()
-        z = self.validation_z.to(self.device)
+        # z = self.validation_z.to(self.device)
 
         # log sampled images
-        sample_imgs = self(z)
-        grid = torchvision.utils.make_grid(sample_imgs)
-        self.logger.experiment.add_image('generated_images', grid, self.current_epoch)
+        # sample_imgs = self(z)
+        # grid = torchvision.utils.make_grid(sample_imgs)
+        # self.logger.experiment.add_image('generated_images', grid, self.current_epoch)
 
         # (i) Sample if necessary
-        if (it % cfg.train.sample_every) == 0:
-            print('Creating samples...')
-            x = evaluator.create_samples(ztest, ytest)
-            logger.add_imgs(x, 'all', it)
-            for y_inst in range(sample_nlabels):
-                x = evaluator.create_samples(ztest, y_inst)
-                logger.add_imgs(x, '%04d' % y_inst, it)
+        # if (it % cfg.train.sample_every) == 0:
+        print('Creating samples...')
+        ztest, ytest = self.ztest.to(self.device), self.ytest.to(self.device)
+        x = self.create_samples(ztest, ytest)
+        # logger.add_imgs(x, 'all', it)
+        for y_inst in range(self.sample_nlabels):
+            x = self.create_samples(ztest, y_inst)
+            # logger.add_imgs(x, '%04d' % y_inst, it)
 
         # (ii) Compute inception if necessary
-        if cfg.train.inception_every > 0 and ((it + 1) % cfg.train.inception_every) == 0:
-            inception_mean, inception_std = evaluator.compute_inception_score()
-            logger.add('inception_score', 'mean', inception_mean, it=it)
-            logger.add('inception_score', 'stddev', inception_std, it=it)
+        # if cfg.train.inception_every > 0 and ((it + 1) % cfg.train.inception_every) == 0:
+        inception_mean, inception_std = self.compute_inception_score()
+        # logger.add('inception_score', 'mean', inception_mean, it=it)
+        # logger.add('inception_score', 'stddev', inception_std, it=it)
 
         # (iii) Backup if necessary
-        if ((it + 1) % cfg.train.backup_every) == 0:
-            print('Saving backup...')
-            checkpoint_io.save('model_%08d.pt' % it, it=it)
-            logger.save_stats('stats_%08d.p' % it)
+        # if ((it + 1) % cfg.train.backup_every) == 0:
+        print('Saving backup...')
+        checkpoint_io.save('model_%08d.pt' % it, it=it)
+        logger.save_stats('stats_%08d.p' % it)
 
         # (iv) Save checkpoint if necessary
-        if time.time() - t0 > cfg.train.save_every:
-            print('Saving checkpoint...')
-            checkpoint_io.save(model_file, it=it)
-            logger.save_stats('stats.p')
-            t0 = time.time()
+        # if time.time() - t0 > cfg.train.save_every:
 
-            if (restart_every > 0 and t0 - tstart > restart_every):
-                exit(3)
+        print('Saving checkpoint...')
+        checkpoint_io.save(model_file, it=it)
+        logger.save_stats('stats.p')
+        # t0 = time.time()
+
+            # if (restart_every > 0 and t0 - tstart > restart_every):
+            #     exit(3)
 
     def training_step(self, batch, batch_nb, optimizer_idx):
         x_real, y = batch
@@ -250,13 +237,6 @@ class LM(pl.LightningModule):
             # if self.cfg.train.take_model_average:
             #     update_average(generator_test, generator,
             #                    beta=cfg.train.model_average_beta)
-
-        # Print stats
-        # g_loss_last = logger.get_last('losses', 'generator')
-        # d_loss_last = logger.get_last('losses', 'discriminator')
-        # d_reg_last = logger.get_last('losses', 'regularizer')
-        # print('[epoch %0d, it %4d] g_loss = %.4f, d_loss = %.4f, reg=%.4f'
-        #       % (epoch_idx, it, g_loss_last, d_loss_last, d_reg_last))
 
     def discriminator_step(self, x_real, y, z):
         with torch.no_grad():
@@ -304,6 +284,39 @@ class LM(pl.LightningModule):
         assert(grad_dout2.size() == x_in.size())
         reg = grad_dout2.view(batch_size, -1).sum(1)
         return reg
+
+    #Eval code
+    def compute_inception_score(self, inception_nsamples=60000):
+        imgs = []
+        while(len(imgs) < inception_nsamples):
+            ztest = self.zdist.sample((self.cfg.train.batch_size,)).to(self.device)
+            ytest = self.ydist.sample((self.cfg.train.batch_size,)).to(self.device)
+
+            samples = self.generator(ztest, ytest)
+            samples = [s.data.cpu().numpy() for s in samples]
+            imgs.extend(samples)
+
+        imgs = imgs[:inception_nsamples]
+        score, score_std = inception_score(
+            imgs, device=self.device, resize=True, splits=10
+        )
+        import ipdb;ipdb.set_trace()
+
+        return score, score_std
+
+    def create_samples(self, z, y=None):
+        self.generator.eval()
+        batch_size = z.size(0)
+        # Parse y
+        if y is None:
+            y = self.ydist.sample((batch_size,))
+        elif isinstance(y, int):
+            y = torch.full((batch_size,), y,
+                           device=self.device, dtype=torch.int64)
+        # Sample x
+        with torch.no_grad():
+            x = self.generator(z, y)
+        return x
 
 @hydra.main(config_name="config")
 def train(cfg: DictConfig) -> None:
