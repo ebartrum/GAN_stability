@@ -21,7 +21,7 @@ z_dist:
   type: gauss
   dim: 256
 train:
-  out_dir: output/default
+  out_dir: outputs/default
   gan_type: standard
   reg_type: real
   reg_param: 10.

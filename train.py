@@ -27,11 +27,14 @@ class LM(pl.LightningModule):
         super(LM, self).__init__()
         self.cfg = cfg
         checkpoint_dir = path.join(cfg.train.out_dir, 'chkpts')
+        log_dir = path.join(cfg.train.out_dir, 'logs')
         # Create missing directories
         if not path.exists(cfg.train.out_dir):
             os.makedirs(cfg.train.out_dir)
         if not path.exists(checkpoint_dir):
             os.makedirs(checkpoint_dir)
+        if not path.exists(log_dir):
+            os.makedirs(log_dir)
         # Logger
         checkpoint_io = CheckpointIO(
             checkpoint_dir=checkpoint_dir
@@ -68,8 +71,6 @@ class LM(pl.LightningModule):
         # model_file = cfg.train.model_file
 
         # Logger
-        # logger = Logger(
-        #     log_dir=path.join(cfg.train.out_dir, 'logs'),
         #     img_dir=path.join(cfg.train.out_dir, 'imgs'),
         #     monitoring=cfg.train.monitoring,
         #     monitoring_dir=path.join(cfg.train.out_dir, 'monitoring')
@@ -176,16 +177,16 @@ class LM(pl.LightningModule):
         print('Creating samples...')
         ztest, ytest = self.ztest.to(self.device), self.ytest.to(self.device)
         x = self.create_samples(ztest, ytest)
-        # logger.add_imgs(x, 'all', it)
-        for y_inst in range(self.sample_nlabels):
-            x = self.create_samples(ztest, y_inst)
-            # logger.add_imgs(x, '%04d' % y_inst, it)
+        self.logger.experiment.add_images('all', x, self.current_epoch)
+        # for y_inst in range(self.sample_nlabels):
+        #     x = self.create_samples(ztest, y_inst)
+        #     self.logger.experiment.add_images('%04d', x % y_inst, it)
 
         # (ii) Compute inception if necessary
         print('Computing inception score...')
         inception_mean, inception_std = self.compute_inception_score(
                 inception_nsamples=self.cfg.test.num_inception_samples)
-        # logger.add('inception_score', 'mean', inception_mean, it=it)
+        # self.logger.experiment.add('inception_score', 'mean', inception_mean, self.current_epoch)
         # logger.add('inception_score', 'stddev', inception_std, it=it)
 
         # (iii) Backup if necessary
@@ -209,8 +210,7 @@ class LM(pl.LightningModule):
             tqdm_dict = {'d_loss': d_loss}
             output = OrderedDict({
                 'loss': d_loss,
-                'progress_bar': tqdm_dict,
-                'log': tqdm_dict
+                'progress_bar': tqdm_dict
             })
             return output
         elif optimizer_idx == 1:
@@ -218,8 +218,7 @@ class LM(pl.LightningModule):
             tqdm_dict = {'g_loss': g_loss}
             output = OrderedDict({
                 'loss': g_loss,
-                'progress_bar': tqdm_dict,
-                'log': tqdm_dict
+                'progress_bar': tqdm_dict
             })
             return output
 
@@ -243,6 +242,7 @@ class LM(pl.LightningModule):
             raise NotImplementedError(f"reg type {self.reg_type} not implemented")
 
         dloss = (dloss_real + dloss_fake + self.reg_param*reg)
+        self.log('dloss', dloss)
         return dloss
 
     def generator_step(self, y, z):
@@ -250,6 +250,7 @@ class LM(pl.LightningModule):
         x_fake = self.generator(z, y)
         d_fake = self.discriminator(x_fake, y)
         gloss = self.compute_loss(d_fake, 1)
+        self.log('gloss', gloss)
         return gloss
 
     def compute_loss(self, d_out, target):
@@ -309,7 +310,10 @@ class LM(pl.LightningModule):
 @hydra.main(config_name="config")
 def train(cfg: DictConfig) -> None:
     lm = LM(cfg)
-    trainer = pl.Trainer(gpus=1, logger=None,
+    logger = pl.loggers.TensorBoardLogger(
+            save_dir=path.join(cfg.train.out_dir, 'logs'), name="my_model",
+            default_hp_metric=False)
+    trainer = pl.Trainer(gpus=1, logger=logger,
             max_epochs=10)  
     trainer.fit(lm)
 

@@ -19,7 +19,7 @@ z_dist:
   type: gauss
   dim: 256
 train:
-  out_dir: output/celebA-sample
+  out_dir: outputs/celebA-sample
   batch_size: 8
 test:
   batch_size: 4
