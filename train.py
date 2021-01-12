@@ -19,6 +19,7 @@ from hydra.utils import instantiate
 import pytorch_lightning as pl
 from torch import optim
 from torch.nn import functional as F
+from collections import OrderedDict
 
 class LM(pl.LightningModule):
     def __init__(self, cfg):
@@ -131,6 +132,7 @@ class LM(pl.LightningModule):
         )
         
     def forward(self, z):
+        import ipdb;ipdb.set_trace()
         return self.generator(z)
 
     def configure_optimizers(self):
@@ -227,11 +229,23 @@ class LM(pl.LightningModule):
         y.clamp_(None, self.nlabels-1)
         z = self.zdist.sample((self.cfg.train.batch_size,)).to(self.device)
         if optimizer_idx == 0:
-            dloss = self.discriminator_step(x_real, y, z)
-            return dloss
+            d_loss = self.discriminator_step(x_real, y, z)
+            tqdm_dict = {'d_loss': d_loss}
+            output = OrderedDict({
+                'loss': d_loss,
+                'progress_bar': tqdm_dict,
+                'log': tqdm_dict
+            })
+            return output
         elif optimizer_idx == 1:
-            gloss = self.generator_step(y, z)
-            return gloss
+            g_loss = self.generator_step(y, z)
+            tqdm_dict = {'g_loss': g_loss}
+            output = OrderedDict({
+                'loss': g_loss,
+                'progress_bar': tqdm_dict,
+                'log': tqdm_dict
+            })
+            return output
 
             # if self.cfg.train.take_model_average:
             #     update_average(generator_test, generator,
