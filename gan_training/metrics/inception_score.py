@@ -11,13 +11,6 @@ from scipy.stats import entropy
 
 def inception_score(imgs, device=None, batch_size=32, resize=False, splits=1):
     """Computes the inception score of the generated images imgs
-
-    Args:
-        imgs: Torch dataset of (3xHxW) numpy images normalized in the
-              range [-1, 1]
-        cuda: whether or not to run on GPU
-        batch_size: batch size for feeding into Inception v3
-        splits: number of splits
     """
     N = len(imgs)
 

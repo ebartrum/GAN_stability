@@ -51,6 +51,7 @@ test:
   sample_nrow: 8
   use_model_average: true
   compute_inception: false
+  num_inception_samples: 1024
   conditional_samples: false
   model_file: model.pt
 interpolations:

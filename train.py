@@ -171,13 +171,6 @@ class LM(pl.LightningModule):
        )
 
     def on_epoch_end(self):
-        # z = self.validation_z.to(self.device)
-
-        # log sampled images
-        # sample_imgs = self(z)
-        # grid = torchvision.utils.make_grid(sample_imgs)
-        # self.logger.experiment.add_image('generated_images', grid, self.current_epoch)
-
         # (i) Sample if necessary
         # if (it % cfg.train.sample_every) == 0:
         print('Creating samples...')
@@ -189,27 +182,23 @@ class LM(pl.LightningModule):
             # logger.add_imgs(x, '%04d' % y_inst, it)
 
         # (ii) Compute inception if necessary
-        # if cfg.train.inception_every > 0 and ((it + 1) % cfg.train.inception_every) == 0:
-        inception_mean, inception_std = self.compute_inception_score()
+        print('Computing inception score...')
+        inception_mean, inception_std = self.compute_inception_score(
+                inception_nsamples=self.cfg.test.num_inception_samples)
         # logger.add('inception_score', 'mean', inception_mean, it=it)
         # logger.add('inception_score', 'stddev', inception_std, it=it)
 
         # (iii) Backup if necessary
         # if ((it + 1) % cfg.train.backup_every) == 0:
         print('Saving backup...')
-        checkpoint_io.save('model_%08d.pt' % it, it=it)
-        logger.save_stats('stats_%08d.p' % it)
+        # checkpoint_io.save('model_%08d.pt' % it, it=it)
+        # logger.save_stats('stats_%08d.p' % it)
 
         # (iv) Save checkpoint if necessary
-        # if time.time() - t0 > cfg.train.save_every:
 
         print('Saving checkpoint...')
-        checkpoint_io.save(model_file, it=it)
-        logger.save_stats('stats.p')
-        # t0 = time.time()
-
-            # if (restart_every > 0 and t0 - tstart > restart_every):
-            #     exit(3)
+        # checkpoint_io.save(model_file, it=it)
+        # logger.save_stats('stats.p')
 
     def training_step(self, batch, batch_nb, optimizer_idx):
         x_real, y = batch
@@ -286,7 +275,7 @@ class LM(pl.LightningModule):
         return reg
 
     #Eval code
-    def compute_inception_score(self, inception_nsamples=60000):
+    def compute_inception_score(self, inception_nsamples):
         imgs = []
         while(len(imgs) < inception_nsamples):
             ztest = self.zdist.sample((self.cfg.train.batch_size,)).to(self.device)
@@ -300,7 +289,6 @@ class LM(pl.LightningModule):
         score, score_std = inception_score(
             imgs, device=self.device, resize=True, splits=10
         )
-        import ipdb;ipdb.set_trace()
 
         return score, score_std
 
