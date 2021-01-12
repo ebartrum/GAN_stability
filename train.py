@@ -92,8 +92,8 @@ class LM(pl.LightningModule):
         #     generator_test = generator
 
         # Evaluator
-        self.evaluator = Evaluator(self.generator, self.zdist, self.ydist,
-                              batch_size=cfg.train.batch_size)
+        # self.evaluator = Evaluator(self.generator, self.zdist, self.ydist,
+        #                       batch_size=cfg.train.batch_size)
 
         # Train
         # tstart = t0 = time.time()
@@ -227,18 +227,15 @@ class LM(pl.LightningModule):
         y.clamp_(None, self.nlabels-1)
         z = self.zdist.sample((self.cfg.train.batch_size,)).to(self.device)
         if optimizer_idx == 0:
-            # Discriminator updates
             dloss = self.discriminator_step(x_real, y, z)
-            # logger.add('losses', 'discriminator', dloss, it=it)
-            # logger.add('losses', 'regularizer', reg, it=it)
+            return dloss
         elif optimizer_idx == 1:
-            # Generators updates
             gloss = self.generator_step(y, z)
-            # logger.add('losses', 'generator', gloss, it=it)
+            return gloss
 
-            if cfg.train.take_model_average:
-                update_average(generator_test, generator,
-                               beta=cfg.train.model_average_beta)
+            # if self.cfg.train.take_model_average:
+            #     update_average(generator_test, generator,
+            #                    beta=cfg.train.model_average_beta)
 
         # Print stats
         # g_loss_last = logger.get_last('losses', 'generator')
@@ -251,34 +248,18 @@ class LM(pl.LightningModule):
         with torch.no_grad():
             x_fake = self.generator(z, y)
 
+        x_real.requires_grad_()
         d_real = self.discriminator(x_real, y)
         d_fake = self.discriminator(x_fake, y)
         dloss_real = self.compute_loss(d_real, 1)
         dloss_fake = self.compute_loss(d_fake, 0)
-        # x_real.requires_grad_()
-        # x_fake.requires_grad_()
 
-        if self.reg_type == 'wgangp':
-            reg = self.wgan_gp_reg(x_real, x_fake, y)
-        elif self.reg_type == 'wgangp0':
-            reg = self.wgan_gp_reg(x_real, x_fake, y, center=0.)
-        elif self.reg_type == 'real':
-            dloss_real.backward(retain_graph=True)
+        if self.reg_type == 'real':
             reg = self.compute_grad2(d_real, x_real).mean()
-        elif self.reg_type == 'fake':
-            dloss_fake.backward(retain_graph=True)
-            reg = self.compute_grad2(d_fake, x_fake).mean()
-        elif self.reg_type == 'real_fake':
-            dloss_real.backward(retain_graph=True)
-            dloss_fake.backward(retain_graph=True)
-            reg = self.compute_grad2(d_real, x_real).mean() +\
-                    self.compute_grad2(d_fake, x_fake).mean()
-        elif self.reg_type == 'none':
-            reg = torch.tensor(0.)
+        else:
+            raise NotImplementedError(f"reg type {self.reg_type} not implemented")
 
-        # Output
         dloss = (dloss_real + dloss_fake + self.reg_param*reg)
-
         return dloss
 
     def generator_step(self, y, z):
@@ -296,7 +277,7 @@ class LM(pl.LightningModule):
         elif self.gan_type == 'wgan':
             loss = (2*target - 1) * d_out.mean()
         else:
-            raise NotImplementedError
+            raise NotImplementedError(f"gan type {self.gan_type} not implemented")
         return loss
 
     def compute_grad2(self, d_out, x_in):
