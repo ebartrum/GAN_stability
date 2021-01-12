@@ -42,7 +42,7 @@ train:
   lr_d: 0.0001
   lr_anneal: 1.
   lr_anneal_every: 150000
-  d_steps: 1
+  n_critic: 1
   equalize_lr: false
   model_file: model.pt
 test:
