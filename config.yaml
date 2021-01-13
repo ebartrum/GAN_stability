@@ -57,3 +57,7 @@ test:
 interpolations:
   nzs: 10
   nsubsteps: 75
+hydra:
+  output_subdir: null
+  run:
+    dir: .
