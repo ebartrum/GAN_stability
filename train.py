@@ -7,9 +7,8 @@ import torch
 from torch import nn, autograd
 import hydra
 from gan_training import utils
-from gan_training.train import Trainer, update_average
+from gan_training.train import Trainer
 from gan_training.logger import Logger
-from gan_training.checkpoints import CheckpointIO
 from gan_training.inputs import get_dataset
 from gan_training.distributions import get_ydist, get_zdist
 from gan_training.eval import Evaluator
@@ -21,25 +20,12 @@ from torch import optim
 from torch.nn import functional as F
 from collections import OrderedDict
 from gan_training.metrics import inception_score
+from pytorch_lightning.callbacks import ModelCheckpoint
 
 class LM(pl.LightningModule):
     def __init__(self, cfg):
         super(LM, self).__init__()
         self.cfg = cfg
-        checkpoint_dir = path.join(cfg.train.out_dir, 'chkpts')
-        log_dir = path.join(cfg.train.out_dir, 'logs')
-        # Create missing directories
-        if not path.exists(cfg.train.out_dir):
-            os.makedirs(cfg.train.out_dir)
-        if not path.exists(checkpoint_dir):
-            os.makedirs(checkpoint_dir)
-        if not path.exists(log_dir):
-            os.makedirs(log_dir)
-        # Logger
-        checkpoint_io = CheckpointIO(
-            checkpoint_dir=checkpoint_dir
-        )
-
         # Dataset
         self.train_dataset = get_dataset(
             name=cfg.data.type,
@@ -59,23 +45,6 @@ class LM(pl.LightningModule):
         self.reg_type = cfg.train.reg_type
         self.reg_param = cfg.train.reg_param
 
-        # Register modules to checkpoint
-        # checkpoint_io.register_modules(
-        #     generator=generator,
-        #     discriminator=discriminator,
-        #     g_optimizer=g_optimizer,
-        #     d_optimizer=d_optimizer,
-        # )
-
-        # Get model file
-        # model_file = cfg.train.model_file
-
-        # Logger
-        #     img_dir=path.join(cfg.train.out_dir, 'imgs'),
-        #     monitoring=cfg.train.monitoring,
-        #     monitoring_dir=path.join(cfg.train.out_dir, 'monitoring')
-        # )
-
         # Distributions
         self.ydist = get_ydist(self.nlabels)
         self.zdist = get_zdist(cfg.z_dist.type, cfg.z_dist.dim)
@@ -85,33 +54,10 @@ class LM(pl.LightningModule):
         x_real, self.ytest = utils.get_nsamples(self.train_dataloader(), ntest)
         self.ytest.clamp_(None, self.nlabels-1)
         self.ztest = self.zdist.sample((ntest,))
-        # utils.save_images(x_real, path.join(cfg.train.out_dir, 'real.png'))
-
-        # Test generator
-        # if cfg.train.take_model_average:
-        #     generator_test = copy.deepcopy(generator)
-        #     checkpoint_io.register_modules(generator_test=generator_test)
-        # else:
-        #     generator_test = generator
 
         # Evaluator
         self.evaluator = Evaluator(self.generator, self.zdist, self.ydist,
                               batch_size=cfg.train.batch_size)
-
-        # Load checkpoint if it exists
-        # try:
-        #     load_dict = checkpoint_io.load(model_file)
-        # except FileNotFoundError:
-        #     it = epoch_idx = -1
-        # else:
-        #     it = load_dict.get('it', -1)
-        #     epoch_idx = load_dict.get('epoch_idx', -1)
-        #     logger.load_stats('stats.p')
-
-        # Reinitialize model average if needed
-        # if (cfg.train.take_model_average
-        #         and cfg.train.model_average_reinit):
-        #     update_average(generator_test, generator, 0.)
 
     def train_dataloader(self):
         return torch.utils.data.DataLoader(
@@ -122,7 +68,6 @@ class LM(pl.LightningModule):
         )
         
     def forward(self, z):
-        import ipdb;ipdb.set_trace()
         return self.generator(z)
 
     def configure_optimizers(self):
@@ -168,38 +113,14 @@ class LM(pl.LightningModule):
 
         return (
            {'optimizer': g_optimizer, 'lr_scheduler': g_scheduler, 'frequency': 1},
-           {'optimizer': d_optimizer, 'lr_scheduler': d_scheduler, 'frequency': self.cfg.train.n_critic}
+           {'optimizer': d_optimizer, 'lr_scheduler': d_scheduler, 'frequency': self.cfg.train.n_critic} # TODO: correct this
        )
 
     def on_epoch_end(self):
-        # (i) Sample if necessary
-        # if (it % cfg.train.sample_every) == 0:
-        print('Creating samples...')
+        print('Creating images to log...')
         ztest, ytest = self.ztest.to(self.device), self.ytest.to(self.device)
         x = self.create_samples(ztest, ytest)
-        self.logger.experiment.add_images('all', x, self.current_epoch)
-        # for y_inst in range(self.sample_nlabels):
-        #     x = self.create_samples(ztest, y_inst)
-        #     self.logger.experiment.add_images('%04d', x % y_inst, it)
-
-        # (ii) Compute inception if necessary
-        print('Computing inception score...')
-        inception_mean, inception_std = self.compute_inception_score(
-                inception_nsamples=self.cfg.test.num_inception_samples)
-        # self.logger.experiment.add('inception_score', 'mean', inception_mean, self.current_epoch)
-        # logger.add('inception_score', 'stddev', inception_std, it=it)
-
-        # (iii) Backup if necessary
-        # if ((it + 1) % cfg.train.backup_every) == 0:
-        print('Saving backup...')
-        # checkpoint_io.save('model_%08d.pt' % it, it=it)
-        # logger.save_stats('stats_%08d.p' % it)
-
-        # (iv) Save checkpoint if necessary
-
-        print('Saving checkpoint...')
-        # checkpoint_io.save(model_file, it=it)
-        # logger.save_stats('stats.p')
+        self.logger.experiment.add_images('Generated samples', x, self.current_epoch)
 
     def training_step(self, batch, batch_nb, optimizer_idx):
         x_real, y = batch
@@ -207,24 +128,12 @@ class LM(pl.LightningModule):
         z = self.zdist.sample((self.cfg.train.batch_size,)).to(self.device)
         if optimizer_idx == 0:
             d_loss = self.discriminator_step(x_real, y, z)
-            tqdm_dict = {'d_loss': d_loss}
-            output = OrderedDict({
-                'loss': d_loss,
-                'progress_bar': tqdm_dict
-            })
-            return output
+            self.log('d_loss', d_loss)
+            return d_loss
         elif optimizer_idx == 1:
             g_loss = self.generator_step(y, z)
-            tqdm_dict = {'g_loss': g_loss}
-            output = OrderedDict({
-                'loss': g_loss,
-                'progress_bar': tqdm_dict
-            })
-            return output
-
-            # if self.cfg.train.take_model_average:
-            #     update_average(generator_test, generator,
-            #                    beta=cfg.train.model_average_beta)
+            self.log('g_loss', g_loss)
+            return g_loss
 
     def discriminator_step(self, x_real, y, z):
         with torch.no_grad():
@@ -233,25 +142,23 @@ class LM(pl.LightningModule):
         x_real.requires_grad_()
         d_real = self.discriminator(x_real, y)
         d_fake = self.discriminator(x_fake, y)
-        dloss_real = self.compute_loss(d_real, 1)
-        dloss_fake = self.compute_loss(d_fake, 0)
+        d_loss_real = self.compute_loss(d_real, 1)
+        d_loss_fake = self.compute_loss(d_fake, 0)
 
         if self.reg_type == 'real':
             reg = self.compute_grad2(d_real, x_real).mean()
         else:
             raise NotImplementedError(f"reg type {self.reg_type} not implemented")
 
-        dloss = (dloss_real + dloss_fake + self.reg_param*reg)
-        self.log('dloss', dloss)
-        return dloss
+        d_loss = (d_loss_real + d_loss_fake + self.reg_param*reg)
+        return d_loss
 
     def generator_step(self, y, z):
         assert(y.size(0) == z.size(0))
         x_fake = self.generator(z, y)
         d_fake = self.discriminator(x_fake, y)
-        gloss = self.compute_loss(d_fake, 1)
-        self.log('gloss', gloss)
-        return gloss
+        g_loss = self.compute_loss(d_fake, 1)
+        return g_loss
 
     def compute_loss(self, d_out, target):
         targets = d_out.new_full(size=d_out.size(), fill_value=target)
@@ -275,7 +182,6 @@ class LM(pl.LightningModule):
         reg = grad_dout2.view(batch_size, -1).sum(1)
         return reg
 
-    #Eval code
     def compute_inception_score(self, inception_nsamples):
         imgs = []
         while(len(imgs) < inception_nsamples):
@@ -294,7 +200,6 @@ class LM(pl.LightningModule):
         return score, score_std
 
     def create_samples(self, z, y=None):
-        self.generator.eval()
         batch_size = z.size(0)
         # Parse y
         if y is None:
@@ -303,18 +208,18 @@ class LM(pl.LightningModule):
             y = torch.full((batch_size,), y,
                            device=self.device, dtype=torch.int64)
         # Sample x
-        with torch.no_grad():
-            x = self.generator(z, y)
+        x = self.generator(z, y)
         return x
 
 @hydra.main(config_name="config")
 def train(cfg: DictConfig) -> None:
     lm = LM(cfg)
-    logger = pl.loggers.TensorBoardLogger(
-            save_dir=path.join(cfg.train.out_dir, 'logs'), name="my_model",
+    tb_logger = pl.loggers.TensorBoardLogger(
+            save_dir='logs', name="my_model",
             default_hp_metric=False)
-    trainer = pl.Trainer(gpus=1, logger=logger,
-            max_epochs=10)  
+    checkpoint_callback = ModelCheckpoint(monitor='d_loss', filename='model-{epoch:02d}-{loss:.2f}')
+    trainer = pl.Trainer(gpus=1, logger=tb_logger,
+            max_epochs=1000, callbacks=[checkpoint_callback])     
     trainer.fit(lm)
 
 if __name__ == "__main__":
