@@ -1,4 +1,4 @@
-outputs
+log
 data
 *_lmdb
 __pycache__
