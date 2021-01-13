@@ -1,0 +1,122 @@
+[2021-01-13 18:42:20,862][lightning][INFO] - GPU available: True, used: True
+[2021-01-13 18:42:20,867][lightning][INFO] - TPU available: None, using: 0 TPU cores
+[2021-01-13 18:42:20,868][lightning][INFO] - LOCAL_RANK: 0 - CUDA_VISIBLE_DEVICES: [0]
+[2021-01-13 18:42:20,889][lightning][WARNING] - Missing logger folder: logs/my_model
+[2021-01-13 18:42:20,893][lightning][INFO] - 
+  | Name          | Type          | Params
+------------------------------------------------
+0 | generator     | Generator     | 4.7 M 
+1 | discriminator | Discriminator | 2.5 M 
+------------------------------------------------
+7.2 M     Trainable params
+0         Non-trainable params
+7.2 M     Total params
+[2021-01-13 18:42:34,051][lightning][INFO] - GPU available: True, used: True
+[2021-01-13 18:42:34,051][lightning][INFO] - TPU available: None, using: 0 TPU cores
+[2021-01-13 18:42:34,051][lightning][INFO] - LOCAL_RANK: 0 - CUDA_VISIBLE_DEVICES: [0]
+[2021-01-13 18:42:34,074][lightning][INFO] - 
+  | Name          | Type          | Params
+------------------------------------------------
+0 | generator     | Generator     | 4.7 M 
+1 | discriminator | Discriminator | 2.5 M 
+------------------------------------------------
+7.2 M     Trainable params
+0         Non-trainable params
+7.2 M     Total params
+[2021-01-13 18:42:45,851][lightning][INFO] - GPU available: True, used: True
+[2021-01-13 18:42:45,851][lightning][INFO] - TPU available: None, using: 0 TPU cores
+[2021-01-13 18:42:45,852][lightning][INFO] - LOCAL_RANK: 0 - CUDA_VISIBLE_DEVICES: [0]
+[2021-01-13 18:42:45,877][lightning][INFO] - 
+  | Name          | Type          | Params
+------------------------------------------------
+0 | generator     | Generator     | 4.7 M 
+1 | discriminator | Discriminator | 2.5 M 
+------------------------------------------------
+7.2 M     Trainable params
+0         Non-trainable params
+7.2 M     Total params
+[2021-01-13 18:43:40,656][lightning][INFO] - GPU available: True, used: True
+[2021-01-13 18:43:40,662][lightning][INFO] - TPU available: None, using: 0 TPU cores
+[2021-01-13 18:43:40,662][lightning][INFO] - LOCAL_RANK: 0 - CUDA_VISIBLE_DEVICES: [0]
+[2021-01-13 18:43:40,687][lightning][INFO] - 
+  | Name          | Type          | Params
+------------------------------------------------
+0 | generator     | Generator     | 4.7 M 
+1 | discriminator | Discriminator | 2.5 M 
+------------------------------------------------
+7.2 M     Trainable params
+0         Non-trainable params
+7.2 M     Total params
+[2021-01-13 18:44:59,207][lightning][INFO] - GPU available: True, used: True
+[2021-01-13 18:44:59,207][lightning][INFO] - TPU available: None, using: 0 TPU cores
+[2021-01-13 18:44:59,207][lightning][INFO] - LOCAL_RANK: 0 - CUDA_VISIBLE_DEVICES: [0]
+[2021-01-13 18:44:59,236][lightning][INFO] - 
+  | Name          | Type          | Params
+------------------------------------------------
+0 | generator     | Generator     | 4.7 M 
+1 | discriminator | Discriminator | 2.5 M 
+------------------------------------------------
+7.2 M     Trainable params
+0         Non-trainable params
+7.2 M     Total params
+[2021-01-13 18:49:13,568][lightning][INFO] - GPU available: True, used: True
+[2021-01-13 18:49:13,569][lightning][INFO] - TPU available: None, using: 0 TPU cores
+[2021-01-13 18:49:13,569][lightning][INFO] - LOCAL_RANK: 0 - CUDA_VISIBLE_DEVICES: [0]
+[2021-01-13 18:49:13,600][lightning][WARNING] - Missing logger folder: logs/my_model
+[2021-01-13 18:49:13,605][lightning][INFO] - 
+  | Name          | Type          | Params
+------------------------------------------------
+0 | generator     | Generator     | 4.7 M 
+1 | discriminator | Discriminator | 2.5 M 
+------------------------------------------------
+7.2 M     Trainable params
+0         Non-trainable params
+7.2 M     Total params
+[2021-01-13 18:49:54,877][lightning][INFO] - GPU available: True, used: True
+[2021-01-13 18:49:54,878][lightning][INFO] - TPU available: None, using: 0 TPU cores
+[2021-01-13 18:49:54,878][lightning][INFO] - LOCAL_RANK: 0 - CUDA_VISIBLE_DEVICES: [0]
+[2021-01-13 18:49:54,904][lightning][INFO] - 
+  | Name          | Type          | Params
+------------------------------------------------
+0 | generator     | Generator     | 4.7 M 
+1 | discriminator | Discriminator | 2.5 M 
+------------------------------------------------
+7.2 M     Trainable params
+0         Non-trainable params
+7.2 M     Total params
+[2021-01-13 18:52:14,672][lightning][INFO] - GPU available: True, used: True
+[2021-01-13 18:52:14,672][lightning][INFO] - TPU available: None, using: 0 TPU cores
+[2021-01-13 18:52:14,672][lightning][INFO] - LOCAL_RANK: 0 - CUDA_VISIBLE_DEVICES: [0]
+[2021-01-13 18:52:14,697][lightning][INFO] - 
+  | Name          | Type          | Params
+------------------------------------------------
+0 | generator     | Generator     | 4.7 M 
+1 | discriminator | Discriminator | 2.5 M 
+------------------------------------------------
+7.2 M     Trainable params
+0         Non-trainable params
+7.2 M     Total params
+[2021-01-13 18:52:43,988][lightning][INFO] - GPU available: True, used: True
+[2021-01-13 18:52:43,988][lightning][INFO] - TPU available: None, using: 0 TPU cores
+[2021-01-13 18:52:43,989][lightning][INFO] - LOCAL_RANK: 0 - CUDA_VISIBLE_DEVICES: [0]
+[2021-01-13 18:52:44,016][lightning][INFO] - 
+  | Name          | Type          | Params
+------------------------------------------------
+0 | generator     | Generator     | 4.7 M 
+1 | discriminator | Discriminator | 2.5 M 
+------------------------------------------------
+7.2 M     Trainable params
+0         Non-trainable params
+7.2 M     Total params
+[2021-01-13 18:55:56,405][lightning][INFO] - GPU available: True, used: True
+[2021-01-13 18:55:56,406][lightning][INFO] - TPU available: None, using: 0 TPU cores
+[2021-01-13 18:55:56,406][lightning][INFO] - LOCAL_RANK: 0 - CUDA_VISIBLE_DEVICES: [0]
+[2021-01-13 18:55:56,434][lightning][INFO] - 
+  | Name          | Type          | Params
+------------------------------------------------
+0 | generator     | Generator     | 4.7 M 
+1 | discriminator | Discriminator | 2.5 M 
+------------------------------------------------
+7.2 M     Trainable params
+0         Non-trainable params
+7.2 M     Total params
